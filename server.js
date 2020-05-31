@@ -42,7 +42,7 @@ app.use(
     resave: true,
     // resave: true,
     store: new mongostore({ mongooseConnection: mongodb.connection }),
-    cookie: { secure: false, httpOnly: true, maxAge:  1000*60*60*60 },
+    cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 * 60 },
   })
 );
 
@@ -191,9 +191,13 @@ app.get('/shop-grid', async function (req, res, next) {
 });
 
 
+
+
 app.get('/shoping-cart', function (req, res, next) {
   var cart = new Cart(req.session.cart || {});
   var coupon="";
+
+  //console.log(cart.genetateArr());
   res.render('shoping-cart', {
     session: req.session.cart || cartnull,
     getcart: cart.genetateArr() || [],
@@ -204,9 +208,14 @@ app.get('/shoping-cart', function (req, res, next) {
 });
 
 
-app.get('/add-to-cart', function (req, res,next) {
+
+
+
+app.get('/add-to-cart', function (req, res) {
   var id = req.query.id;
   var sl = req.query.sl;
+  // console.log(id);
+  // console.log(sl);
   var cart = new Cart(req.session.cart ? req.session.cart : {});
   allsp.findById(new ObjectId(id), function (err, product) {
     if (err) {
@@ -216,9 +225,9 @@ app.get('/add-to-cart', function (req, res,next) {
     if (product.hieuluc === 'con')
       giasell = product.gia - (product.gia * product.phantram) / 100;
     else giasell = product.gia;
-    console.log("sl la " + sl);
     cart.add(product, product._id, sl, giasell);
     req.session.cart = cart;
+    // console.log(req.session.cart);
     res.redirect('/');
   });
 });
@@ -254,8 +263,7 @@ app.get('/checkout', function (req, res) {
 });
 
 
-
-app.post('/checkout', async function (req, res) {
+app.post('/checkout', async function (req, res, next) {
   var phantram;
   const mac = req.session.coupon;
   const newcoupon = await coupon.find({ ma: mac });
@@ -276,33 +284,30 @@ req.body.y.forEach(e=>{
 
 
 
-
 const bill = require('./model/bill');
-app.post('/bill', async function (req, res) {
+var array_cart =  [];
+
+app.post('/bill', async function (req, res, next) {
+  array_cart =  [];
   var arr_id = [];
   var arr_qty_bill = arr_qty;
-
- for (var i=0;i<arr_qty_bill.length;i++)
-{
-  console.log("bil trong ham :"+arr_qty_bill[i]);
-
-}
-
   for(var e in req.session.cart.items)
   {
     arr_id.push(e);
   }
 var cart = new Cart(req.session.cart ? {} : {});
+array_cart.push(cart);
+// console.log(array_cart[0]);
 
-for (var i=0;i<arr_id.length;i++){
-  var sl=arr_qty_bill[i];
-  console.log("sllo la " + sl);
-find_product(sl,arr_id[i],cart,req.session.cart);
+  for (var i=0;i<arr_id.length;i++){
+    var sl=arr_qty_bill[i];
+  find_product(sl,arr_id[i]);   
   
-}
+  }
+  
+  // console.log(array_cart[0]);
 
   
-    
   const bill_order = new bill({
     first_name: req.body.first_name,
     last_name: req.body.last_name,
@@ -314,12 +319,10 @@ find_product(sl,arr_id[i],cart,req.session.cart);
   bill_order.save();
   // res.render('bill');
   res.redirect('/bill');
-
 });
 
 
-
-function find_product(sl ,arr_id,cart,req)
+function find_product(sl ,arr_id)
 {
   allsp.findById(new ObjectId( arr_id), function (err, product) {
     if (err) {
@@ -329,10 +332,9 @@ function find_product(sl ,arr_id,cart,req)
     if (product.hieuluc === 'con')
       giasell = product.gia - (product.gia * product.phantram) / 100;
     else giasell = product.gia;
-    console.log("sl la " + sl);
-    cart.add(product, product._id, sl, giasell);
-    req = cart;
-    
+    // console.log("sl la " + sl);
+    array_cart[0].add(product, product._id, sl, giasell);
+    // console.log(array_cart[0]);
   });
 }
 
@@ -341,10 +343,9 @@ app.get('/admin', function (req, res) {
   res.render('login');
 });
 app.get('/bill', function (req, res) {
-
-  // console.log(req.session);
-  var cart = new Cart(req.session.cart ? req.session.cart : {});
-// console.log("cart o bill"+cart);
+  // var cart = new Cart(req.session.cart ? req.session.cart : {});
+// console.log(cart);
+  console.log(array_cart[0]);
 
   res.render('bill');
 });
@@ -450,6 +451,7 @@ app.post('/add-coupon', async function (req, res) {
   const mac = req.body.coupon;
   const newcoupon = await coupon.find({ ma: mac });
   var cart = new Cart(req.session.cart || {});
+
   res.render('shoping-cart', {
     session: req.session.cart || cartnull,
     getcart: cart.genetateArr() || [],
